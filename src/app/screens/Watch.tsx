@@ -4,7 +4,6 @@ import { useParams } from 'react-router';
 import { toast } from 'sonner';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { VideoDetails } from '../components/VideoDetails';
-import { RecommendationsSidebar } from '../components/RecommendationsSidebar';
 import { ArtistPanel } from '../components/ArtistPanel';
 import { useVideoDetails } from '../components/hooks/useVideoDetails';
 import { useArtist } from '../components/hooks/useArtist';
@@ -57,10 +56,10 @@ export function Watch() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      <div className="max-w-[1440px] mx-auto px-6 py-6">
-        <div className="flex gap-6">
-          {/* Main Content Column (68%) */}
-          <div className="flex-1" style={{ width: '68%' }}>
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        <div className="flex flex-col gap-6">
+          {/* Main Content Column */}
+          <div className="w-full max-w-4xl mx-auto">
             <VideoPlayer
               videoId={id}
               posterImage={`https://img.youtube.com/vi/${id}/maxresdefault.jpg`}
@@ -73,7 +72,7 @@ export function Watch() {
                 <Tabs.List className="flex items-center gap-1">
                   <Tabs.Trigger
                     value="description"
-                    className="group px-4 py-3 font-['DM_Sans'] text-sm transition-all relative data-[state=active]:font-semibold"
+                    className="group px-3 sm:px-4 py-3 font-['DM_Sans'] text-sm transition-all relative data-[state=active]:font-semibold"
                     style={{ color: 'var(--text-secondary)' }}
                   >
                     Description
@@ -85,7 +84,7 @@ export function Watch() {
 
                   <Tabs.Trigger
                     value="artist"
-                    className="group px-4 py-3 font-['DM_Sans'] text-sm transition-all relative flex items-center gap-2 data-[state=active]:font-semibold"
+                    className="group px-3 sm:px-4 py-3 font-['DM_Sans'] text-sm transition-all relative flex items-center gap-1.5 data-[state=active]:font-semibold"
                     style={{ color: 'var(--text-secondary)' }}
                   >
                     <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--gold-accent)' }} />
@@ -99,7 +98,7 @@ export function Watch() {
 
                 <button
                   onClick={handleFollowToggle}
-                  className="ml-auto mb-1 flex items-center gap-2 px-4 py-2 rounded-full font-['DM_Sans'] text-sm font-medium transition-all hover:opacity-90"
+                  className="ml-auto mb-1 flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full font-['DM_Sans'] text-sm font-medium transition-all hover:opacity-90"
                   style={{
                     backgroundColor: isFollowing ? 'rgba(59,130,246,0.15)' : '#3b82f6',
                     color: isFollowing ? '#3b82f6' : '#fff',
@@ -107,25 +106,25 @@ export function Watch() {
                   }}
                 >
                   {isFollowing ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                  {isFollowing ? 'Following' : 'Follow'}
+                  <span className="hidden sm:inline">{isFollowing ? 'Following' : 'Follow'}</span>
                 </button>
               </div>
 
               {/* Description Tab */}
-              <Tabs.Content value="description" className="mt-6">
-                <div className="rounded-lg p-6" style={{ backgroundColor: 'var(--bg-panel)' }}>
+              <Tabs.Content value="description" className="mt-4 sm:mt-6">
+                <div className="rounded-lg p-4 sm:p-6" style={{ backgroundColor: 'var(--bg-panel)' }}>
                   {videoData?.description ? (
                     videoData.description.split('\n').filter(p => p.trim()).map((para, i) => (
                       <p
                         key={i}
-                        className="font-['DM_Sans'] mb-3 last:mb-0"
-                        style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: '1.7' }}
+                        className="font-['DM_Sans'] mb-3 last:mb-0 text-sm sm:text-[0.9375rem]"
+                        style={{ color: 'var(--text-secondary)', lineHeight: '1.7' }}
                       >
                         {para}
                       </p>
                     ))
                   ) : (
-                    <p className="font-['DM_Sans']" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
+                    <p className="font-['DM_Sans'] text-sm sm:text-[0.9375rem]" style={{ color: 'var(--text-secondary)' }}>
                       No description available.
                     </p>
                   )}
@@ -133,16 +132,12 @@ export function Watch() {
               </Tabs.Content>
 
               {/* Artist Tab */}
-              <Tabs.Content value="artist" className="mt-6">
+              <Tabs.Content value="artist" className="mt-4 sm:mt-6">
                 <ArtistPanel artistId={videoData?.channelId} />
               </Tabs.Content>
             </Tabs.Root>
           </div>
 
-          {/* Recommendations Sidebar (32%) */}
-          <div className="flex-shrink-0" style={{ width: '32%' }}>
-            <RecommendationsSidebar />
-          </div>
         </div>
       </div>
     </div>

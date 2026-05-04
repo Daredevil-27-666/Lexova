@@ -96,8 +96,8 @@ export function VideoDetails() {
   return (
     <div className="py-5">
       <h1
-        className="font-['Playfair_Display'] mb-3"
-        style={{ color: 'var(--text-primary)', fontSize: '1.75rem', lineHeight: '1.3', fontWeight: '600' }}
+        className="font-['Playfair_Display'] mb-3 text-2xl sm:text-[1.75rem]"
+        style={{ color: 'var(--text-primary)', lineHeight: '1.3', fontWeight: '600' }}
       >
         {video.title}
       </h1>
