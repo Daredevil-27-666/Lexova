@@ -10,8 +10,10 @@ import { Library } from "./screens/Library";
 import { Artists } from "./screens/Artists";
 import { Playlist } from "./screens/Playlist";
 import { Settings } from "./screens/Settings";
+import { Login } from "./screens/Login";
 
 export const router = createBrowserRouter([
+  { path: "login", Component: Login },
   {
     path: "/",
     Component: Root,
