@@ -11,23 +11,29 @@ import { Artists } from "./screens/Artists";
 import { Playlist } from "./screens/Playlist";
 import { Settings } from "./screens/Settings";
 import { Login } from "./screens/Login";
+import { RequireAuth } from "./components/RequireAuth";
 
 export const router = createBrowserRouter([
   { path: "login", Component: Login },
   {
     path: "/",
-    Component: Root,
+    Component: RequireAuth,
     children: [
-      { index: true, Component: Home },
-      { path: "watch/:id", Component: Watch },
-      { path: "artist/:id", Component: ArtistProfile },
-      { path: "explore", Component: Explore },
-      { path: "search", Component: Search },
-      { path: "notifications", Component: Notifications },
-      { path: "library", Component: Library },
-      { path: "artists", Component: Artists },
-      { path: "playlist/:playlistId", Component: Playlist },
-      { path: "settings", Component: Settings },
+      {
+        Component: Root,
+        children: [
+          { index: true, Component: Home },
+          { path: "watch/:id", Component: Watch },
+          { path: "artist/:id", Component: ArtistProfile },
+          { path: "explore", Component: Explore },
+          { path: "search", Component: Search },
+          { path: "notifications", Component: Notifications },
+          { path: "library", Component: Library },
+          { path: "artists", Component: Artists },
+          { path: "playlist/:playlistId", Component: Playlist },
+          { path: "settings", Component: Settings },
+        ],
+      },
     ],
   },
 ]);

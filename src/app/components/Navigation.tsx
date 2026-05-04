@@ -157,15 +157,14 @@ export function Navigation() {
             </NavLink>
           ) : (
             <button
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/settings')}
               className="flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-all hover:bg-[var(--amazon-hover)]"
             >
               <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--bg-elevated)' }}>
                 <User className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
               </div>
               <div className="flex-1 text-left">
-                <div className="font-['DM_Sans'] text-sm" style={{ color: 'var(--text-primary)' }}>Sign In</div>
-                <div className="font-['DM_Sans'] text-xs" style={{ color: 'var(--text-secondary)' }}>with Google</div>
+                <div className="font-['DM_Sans'] text-sm" style={{ color: 'var(--text-primary)' }}>Settings</div>
               </div>
             </button>
           )}
