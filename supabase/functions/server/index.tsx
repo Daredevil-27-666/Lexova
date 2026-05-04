@@ -152,42 +152,41 @@ app.get("/make-server-cc7585ff/youtube/search", async (c) => {
   const videoDuration = c.req.query("videoDuration") || "";
 
   try {
-    const params = new URLSearchParams({
-      part: "snippet",
-      q: `${query} music`,
-      type: "video",
-      videoCategoryId: "10",
-      maxResults,
-      key: apiKey,
-      ...(pageToken ? { pageToken } : {}),
-      ...(videoDuration ? { videoDuration } : {}),
+    const cacheKey = `cache:youtube:search:${encodeURIComponent(query.trim())}:${pageToken}:${maxResults}:${videoDuration}`;
+    const result = await withCache(cacheKey, 300, async () => {
+      const params = new URLSearchParams({
+        part: "snippet",
+        q: `${query} music`,
+        type: "video",
+        videoCategoryId: "10",
+        maxResults,
+        key: apiKey,
+        ...(pageToken ? { pageToken } : {}),
+        ...(videoDuration ? { videoDuration } : {}),
+      });
+
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?${params.toString()}`
+      );
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data?.error?.message || "YouTube API error");
+
+      return {
+        videos: (data.items || []).map((item: any) => ({
+          id: item.id?.videoId,
+          title: item.snippet?.title,
+          channel: item.snippet?.channelTitle,
+          channelId: item.snippet?.channelId,
+          thumbnail: item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.medium?.url,
+          publishedAt: item.snippet?.publishedAt,
+          description: item.snippet?.description,
+        })),
+        nextPageToken: data.nextPageToken || null,
+        totalResults: data.pageInfo?.totalResults || 0,
+      };
     });
-
-    const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?${params.toString()}`
-    );
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.log(`YouTube API error: ${JSON.stringify(data)}`);
-      return c.json({ error: data?.error?.message || "YouTube API error" }, response.status);
-    }
-
-    const videos = (data.items || []).map((item: any) => ({
-      id: item.id?.videoId,
-      title: item.snippet?.title,
-      channel: item.snippet?.channelTitle,
-      channelId: item.snippet?.channelId,
-      thumbnail: item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.medium?.url,
-      publishedAt: item.snippet?.publishedAt,
-      description: item.snippet?.description,
-    }));
-
-    return c.json({
-      videos,
-      nextPageToken: data.nextPageToken || null,
-      totalResults: data.pageInfo?.totalResults || 0,
-    });
+    return c.json(result);
   } catch (err) {
     console.log(`Error calling YouTube API: ${err}`);
     return c.json({ error: `Failed to fetch from YouTube: ${err}` }, 500);
@@ -208,39 +207,37 @@ app.get("/make-server-cc7585ff/youtube/video", async (c) => {
   }
 
   try {
-    const params = new URLSearchParams({
-      part: "snippet,statistics,contentDetails",
-      id: videoId,
-      key: apiKey,
+    const result = await withCache(`cache:youtube:video:${videoId}`, 3600, async () => {
+      const params = new URLSearchParams({
+        part: "snippet,statistics,contentDetails",
+        id: videoId,
+        key: apiKey,
+      });
+
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?${params.toString()}`
+      );
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data?.error?.message || "YouTube API error");
+
+      const item = data.items?.[0];
+      if (!item) throw new Error("Video not found");
+
+      return {
+        id: item.id,
+        title: item.snippet?.title,
+        channel: item.snippet?.channelTitle,
+        channelId: item.snippet?.channelId,
+        thumbnail: item.snippet?.thumbnails?.maxres?.url || item.snippet?.thumbnails?.high?.url,
+        publishedAt: item.snippet?.publishedAt,
+        description: item.snippet?.description,
+        viewCount: item.statistics?.viewCount,
+        likeCount: item.statistics?.likeCount,
+        duration: item.contentDetails?.duration,
+      };
     });
-
-    const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?${params.toString()}`
-    );
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.log(`YouTube video API error: ${JSON.stringify(data)}`);
-      return c.json({ error: data?.error?.message || "YouTube API error" }, response.status);
-    }
-
-    const item = data.items?.[0];
-    if (!item) {
-      return c.json({ error: "Video not found" }, 404);
-    }
-
-    return c.json({
-      id: item.id,
-      title: item.snippet?.title,
-      channel: item.snippet?.channelTitle,
-      channelId: item.snippet?.channelId,
-      thumbnail: item.snippet?.thumbnails?.maxres?.url || item.snippet?.thumbnails?.high?.url,
-      publishedAt: item.snippet?.publishedAt,
-      description: item.snippet?.description,
-      viewCount: item.statistics?.viewCount,
-      likeCount: item.statistics?.likeCount,
-      duration: item.contentDetails?.duration,
-    });
+    return c.json(result);
   } catch (err) {
     console.log(`Error calling YouTube video API: ${err}`);
     return c.json({ error: `Failed to fetch video details: ${err}` }, 500);
@@ -261,107 +258,108 @@ app.get("/make-server-cc7585ff/youtube/related", async (c) => {
   }
 
   try {
-    // Step 1 — Try relatedToVideoId (may be restricted for some API keys)
-    const searchParams = new URLSearchParams({
-      part: "id",
-      relatedToVideoId: videoId,
-      type: "video",
-      maxResults: "10",
-      key: apiKey,
-    });
-
-    let videoIds: string[] = [];
-
-    const searchRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?${searchParams.toString()}`
-    );
-    if (searchRes.ok) {
-      const searchData = await searchRes.json();
-      videoIds = (searchData.items ?? [])
-        .map((item: any) => item.id?.videoId)
-        .filter(Boolean);
-    }
-
-    // Step 1b — Fallback: search by video title if relatedToVideoId returned nothing
-    if (!videoIds.length) {
-      const titleParams = new URLSearchParams({
-        part: "snippet",
-        id: videoId,
+    const result = await withCache(`cache:youtube:related:${videoId}`, 3600, async () => {
+      // Step 1 — Try relatedToVideoId (may be restricted for some API keys)
+      const searchParams = new URLSearchParams({
+        part: "id",
+        relatedToVideoId: videoId,
+        type: "video",
+        maxResults: "10",
         key: apiKey,
       });
-      const titleRes = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?${titleParams.toString()}`
-      );
-      if (titleRes.ok) {
-        const titleData = await titleRes.json();
-        const title: string = titleData.items?.[0]?.snippet?.title ?? "";
-        const artist = title.split(/[-–|]/)[0].trim();
 
-        if (artist) {
-          const fallbackParams = new URLSearchParams({
-            part: "id",
-            q: `${artist} music`,
-            type: "video",
-            videoCategoryId: "10",
-            maxResults: "10",
-            key: apiKey,
-          });
-          const fallbackRes = await fetch(
-            `https://www.googleapis.com/youtube/v3/search?${fallbackParams.toString()}`
-          );
-          if (fallbackRes.ok) {
-            const fallbackData = await fallbackRes.json();
-            videoIds = (fallbackData.items ?? [])
-              .map((item: any) => item.id?.videoId)
-              .filter(Boolean)
-              .filter((id: string) => id !== videoId);
+      let videoIds: string[] = [];
+
+      const searchRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?${searchParams.toString()}`
+      );
+      if (searchRes.ok) {
+        const searchData = await searchRes.json();
+        videoIds = (searchData.items ?? [])
+          .map((item: any) => item.id?.videoId)
+          .filter(Boolean);
+      }
+
+      // Step 1b — Fallback: search by video title if relatedToVideoId returned nothing
+      if (!videoIds.length) {
+        const titleParams = new URLSearchParams({
+          part: "snippet",
+          id: videoId,
+          key: apiKey,
+        });
+        const titleRes = await fetch(
+          `https://www.googleapis.com/youtube/v3/videos?${titleParams.toString()}`
+        );
+        if (titleRes.ok) {
+          const titleData = await titleRes.json();
+          const title: string = titleData.items?.[0]?.snippet?.title ?? "";
+          const artist = title.split(/[-–|]/)[0].trim();
+
+          if (artist) {
+            const fallbackParams = new URLSearchParams({
+              part: "id",
+              q: `${artist} music`,
+              type: "video",
+              videoCategoryId: "10",
+              maxResults: "10",
+              key: apiKey,
+            });
+            const fallbackRes = await fetch(
+              `https://www.googleapis.com/youtube/v3/search?${fallbackParams.toString()}`
+            );
+            if (fallbackRes.ok) {
+              const fallbackData = await fallbackRes.json();
+              videoIds = (fallbackData.items ?? [])
+                .map((item: any) => item.id?.videoId)
+                .filter(Boolean)
+                .filter((id: string) => id !== videoId);
+            }
           }
         }
       }
-    }
 
-    if (!videoIds.length) {
-      return c.json({ videos: [] });
-    }
+      if (!videoIds.length) return { videos: [] };
 
-    // Step 2 — Fetch full details in one request
-    const detailsParams = new URLSearchParams({
-      part: "snippet,contentDetails,statistics",
-      id: videoIds.join(","),
-      key: apiKey,
+      // Step 2 — Fetch full details in one request
+      const detailsParams = new URLSearchParams({
+        part: "snippet,contentDetails,statistics",
+        id: videoIds.join(","),
+        key: apiKey,
+      });
+      const detailsRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?${detailsParams.toString()}`
+      );
+      if (!detailsRes.ok) {
+        const err = await detailsRes.json();
+        throw new Error(err?.error?.message || "YouTube API error");
+      }
+
+      const detailsData = await detailsRes.json();
+      return {
+        videos: (detailsData.items ?? []).map((item: any) => ({
+          id: item.id,
+          title: item.snippet?.title,
+          channelName: item.snippet?.channelTitle,
+          thumbnailUrl:
+            item.snippet?.thumbnails?.maxres?.url ??
+            item.snippet?.thumbnails?.high?.url ??
+            item.snippet?.thumbnails?.medium?.url ??
+            "",
+          viewCount: parseInt(item.statistics?.viewCount ?? "0", 10),
+          durationSeconds: (() => {
+            const iso: string = item.contentDetails?.duration ?? "";
+            const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+            if (!match) return 0;
+            return (
+              parseInt(match[1] ?? "0", 10) * 3600 +
+              parseInt(match[2] ?? "0", 10) * 60 +
+              parseInt(match[3] ?? "0", 10)
+            );
+          })(),
+        })),
+      };
     });
-    const detailsRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?${detailsParams.toString()}`
-    );
-    if (!detailsRes.ok) {
-      const err = await detailsRes.json();
-      return c.json({ error: err?.error?.message || "YouTube API error" }, detailsRes.status);
-    }
-
-    const detailsData = await detailsRes.json();
-    const videos = (detailsData.items ?? []).map((item: any) => ({
-      id: item.id,
-      title: item.snippet?.title,
-      channelName: item.snippet?.channelTitle,
-      thumbnailUrl:
-        item.snippet?.thumbnails?.maxres?.url ??
-        item.snippet?.thumbnails?.high?.url ??
-        item.snippet?.thumbnails?.medium?.url ??
-        "",
-      viewCount: parseInt(item.statistics?.viewCount ?? "0", 10),
-      durationSeconds: (() => {
-        const iso: string = item.contentDetails?.duration ?? "";
-        const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-        if (!match) return 0;
-        return (
-          parseInt(match[1] ?? "0", 10) * 3600 +
-          parseInt(match[2] ?? "0", 10) * 60 +
-          parseInt(match[3] ?? "0", 10)
-        );
-      })(),
-    }));
-
-    return c.json({ videos });
+    return c.json(result);
   } catch (err) {
     console.log(`Error fetching related videos: ${err}`);
     return c.json({ error: `Failed to fetch related videos: ${err}` }, 500);
@@ -379,40 +377,41 @@ app.get("/make-server-cc7585ff/youtube/trending", async (c) => {
   }
 
   try {
-    const params = new URLSearchParams({
-      part: "snippet,statistics,contentDetails",
-      chart: "mostPopular",
-      videoCategoryId: "10",
-      regionCode,
-      maxResults,
-      key: apiKey,
+    const result = await withCache(`cache:youtube:trending:${regionCode}:${maxResults}`, 1800, async () => {
+      const params = new URLSearchParams({
+        part: "snippet,statistics,contentDetails",
+        chart: "mostPopular",
+        videoCategoryId: "10",
+        regionCode,
+        maxResults,
+        key: apiKey,
+      });
+
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?${params.toString()}`
+      );
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data?.error?.message || "YouTube API error");
+
+      return {
+        videos: (data.items || []).map((item: any) => ({
+          id: item.id,
+          title: item.snippet?.title,
+          channel: item.snippet?.channelTitle,
+          channelId: item.snippet?.channelId,
+          thumbnail:
+            item.snippet?.thumbnails?.maxres?.url ??
+            item.snippet?.thumbnails?.high?.url ??
+            item.snippet?.thumbnails?.medium?.url,
+          publishedAt: item.snippet?.publishedAt,
+          viewCount: item.statistics?.viewCount,
+          duration: item.contentDetails?.duration,
+        })),
+        nextPageToken: data.nextPageToken || null,
+      };
     });
-
-    const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?${params.toString()}`
-    );
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.log(`YouTube trending API error: ${JSON.stringify(data)}`);
-      return c.json({ error: data?.error?.message || "YouTube API error" }, response.status);
-    }
-
-    const videos = (data.items || []).map((item: any) => ({
-      id: item.id,
-      title: item.snippet?.title,
-      channel: item.snippet?.channelTitle,
-      channelId: item.snippet?.channelId,
-      thumbnail:
-        item.snippet?.thumbnails?.maxres?.url ??
-        item.snippet?.thumbnails?.high?.url ??
-        item.snippet?.thumbnails?.medium?.url,
-      publishedAt: item.snippet?.publishedAt,
-      viewCount: item.statistics?.viewCount,
-      duration: item.contentDetails?.duration,
-    }));
-
-    return c.json({ videos, nextPageToken: data.nextPageToken || null });
+    return c.json(result);
   } catch (err) {
     console.log(`Error fetching trending: ${err}`);
     return c.json({ error: `Failed to fetch trending: ${err}` }, 500);
@@ -433,36 +432,38 @@ app.get("/make-server-cc7585ff/youtube/videos", async (c) => {
   }
 
   try {
-    const params = new URLSearchParams({
-      part: "snippet,statistics,contentDetails",
-      id: ids,
-      key: apiKey,
+    const normalizedIds = ids.split(",").sort().join(",");
+    const result = await withCache(`cache:youtube:videos:${normalizedIds}`, 3600, async () => {
+      const params = new URLSearchParams({
+        part: "snippet,statistics,contentDetails",
+        id: ids,
+        key: apiKey,
+      });
+
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?${params.toString()}`
+      );
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data?.error?.message || "YouTube API error");
+
+      return {
+        videos: (data.items || []).map((item: any) => ({
+          id: item.id,
+          title: item.snippet?.title,
+          channel: item.snippet?.channelTitle,
+          channelId: item.snippet?.channelId,
+          thumbnail:
+            item.snippet?.thumbnails?.maxres?.url ??
+            item.snippet?.thumbnails?.high?.url ??
+            item.snippet?.thumbnails?.medium?.url ??
+            "",
+          viewCount: item.statistics?.viewCount,
+          duration: item.contentDetails?.duration,
+        })),
+      };
     });
-
-    const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?${params.toString()}`
-    );
-    const data = await response.json();
-
-    if (!response.ok) {
-      return c.json({ error: data?.error?.message || "YouTube API error" }, response.status);
-    }
-
-    const videos = (data.items || []).map((item: any) => ({
-      id: item.id,
-      title: item.snippet?.title,
-      channel: item.snippet?.channelTitle,
-      channelId: item.snippet?.channelId,
-      thumbnail:
-        item.snippet?.thumbnails?.maxres?.url ??
-        item.snippet?.thumbnails?.high?.url ??
-        item.snippet?.thumbnails?.medium?.url ??
-        "",
-      viewCount: item.statistics?.viewCount,
-      duration: item.contentDetails?.duration,
-    }));
-
-    return c.json({ videos });
+    return c.json(result);
   } catch (err) {
     console.log(`Error fetching batch videos: ${err}`);
     return c.json({ error: `Failed to fetch videos: ${err}` }, 500);
@@ -484,75 +485,70 @@ app.get("/make-server-cc7585ff/youtube/channel-videos", async (c) => {
   }
 
   try {
-    // Step 1: search for videos scoped to this channel, ordered by view count
-    const searchParams = new URLSearchParams({
-      part: "id",
-      channelId,
-      type: "video",
-      order: "viewCount",
-      maxResults,
-      key: apiKey,
-    });
+    const result = await withCache(`cache:youtube:channel-videos:${channelId}:${maxResults}`, 3600, async () => {
+      // Step 1: search for videos scoped to this channel, ordered by view count
+      const searchParams = new URLSearchParams({
+        part: "id",
+        channelId,
+        type: "video",
+        order: "viewCount",
+        maxResults,
+        key: apiKey,
+      });
 
-    const searchRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?${searchParams.toString()}`
-    );
-    const searchData = await searchRes.json();
-
-    if (!searchRes.ok) {
-      console.log(`YouTube channel search error: ${JSON.stringify(searchData)}`);
-      return c.json({ error: searchData?.error?.message || "YouTube API error" }, searchRes.status);
-    }
-
-    const videoIds: string[] = (searchData.items ?? [])
-      .map((item: any) => item.id?.videoId)
-      .filter(Boolean);
-
-    if (!videoIds.length) {
-      return c.json({ videos: [] });
-    }
-
-    // Step 2: fetch full details for those video IDs
-    const detailsParams = new URLSearchParams({
-      part: "snippet,contentDetails,statistics",
-      id: videoIds.join(","),
-      key: apiKey,
-    });
-
-    const detailsRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?${detailsParams.toString()}`
-    );
-    const detailsData = await detailsRes.json();
-
-    if (!detailsRes.ok) {
-      console.log(`YouTube video details error: ${JSON.stringify(detailsData)}`);
-      return c.json({ error: detailsData?.error?.message || "YouTube API error" }, detailsRes.status);
-    }
-
-    const parseISODuration = (iso: string): number => {
-      const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-      if (!match) return 0;
-      return (
-        parseInt(match[1] ?? "0", 10) * 3600 +
-        parseInt(match[2] ?? "0", 10) * 60 +
-        parseInt(match[3] ?? "0", 10)
+      const searchRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?${searchParams.toString()}`
       );
-    };
+      const searchData = await searchRes.json();
 
-    const videos = (detailsData.items ?? []).map((item: any) => ({
-      id: item.id,
-      title: item.snippet?.title,
-      channelName: item.snippet?.channelTitle,
-      thumbnailUrl:
-        item.snippet?.thumbnails?.maxres?.url ??
-        item.snippet?.thumbnails?.high?.url ??
-        item.snippet?.thumbnails?.medium?.url ??
-        "",
-      viewCount: parseInt(item.statistics?.viewCount ?? "0", 10),
-      durationSeconds: parseISODuration(item.contentDetails?.duration ?? ""),
-    }));
+      if (!searchRes.ok) throw new Error(searchData?.error?.message || "YouTube API error");
 
-    return c.json({ videos });
+      const videoIds: string[] = (searchData.items ?? [])
+        .map((item: any) => item.id?.videoId)
+        .filter(Boolean);
+
+      if (!videoIds.length) return { videos: [] };
+
+      // Step 2: fetch full details for those video IDs
+      const detailsParams = new URLSearchParams({
+        part: "snippet,contentDetails,statistics",
+        id: videoIds.join(","),
+        key: apiKey,
+      });
+
+      const detailsRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?${detailsParams.toString()}`
+      );
+      const detailsData = await detailsRes.json();
+
+      if (!detailsRes.ok) throw new Error(detailsData?.error?.message || "YouTube API error");
+
+      const parseISODuration = (iso: string): number => {
+        const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+        if (!match) return 0;
+        return (
+          parseInt(match[1] ?? "0", 10) * 3600 +
+          parseInt(match[2] ?? "0", 10) * 60 +
+          parseInt(match[3] ?? "0", 10)
+        );
+      };
+
+      return {
+        videos: (detailsData.items ?? []).map((item: any) => ({
+          id: item.id,
+          title: item.snippet?.title,
+          channelName: item.snippet?.channelTitle,
+          thumbnailUrl:
+            item.snippet?.thumbnails?.maxres?.url ??
+            item.snippet?.thumbnails?.high?.url ??
+            item.snippet?.thumbnails?.medium?.url ??
+            "",
+          viewCount: parseInt(item.statistics?.viewCount ?? "0", 10),
+          durationSeconds: parseISODuration(item.contentDetails?.duration ?? ""),
+        })),
+      };
+    });
+    return c.json(result);
   } catch (err) {
     console.log(`Error fetching channel videos: ${err}`);
     return c.json({ error: `Failed to fetch channel videos: ${err}` }, 500);
@@ -719,61 +715,65 @@ app.get("/make-server-cc7585ff/youtube/find-track", async (c) => {
   }
 
   try {
-    // Rule 2: 5-query fallback chain (all with videoCategoryId:10 via searchYT)
-    const queries = [
-      `${artist} ${song} official audio`,
-      `${artist} ${song} official`,
-      `${artist} ${song} audio`,
-      `${artist} ${song}`,
-      `${artist} topic ${song}`,
-    ];
+    const trackKey = `cache:youtube:track:${encodeURIComponent(artist!.toLowerCase())}:${encodeURIComponent(song!.toLowerCase())}`;
+    const result = await withCache(trackKey, 86400, async () => {
+      // Rule 2: 5-query fallback chain (all with videoCategoryId:10 via searchYT)
+      const queries = [
+        `${artist} ${song} official audio`,
+        `${artist} ${song} official`,
+        `${artist} ${song} audio`,
+        `${artist} ${song}`,
+        `${artist} topic ${song}`,
+      ];
 
-    for (const q of queries) {
-      const items = await searchYT(q);
-      const best  = pickBest(items);
-      if (best?.id?.videoId) {
-        const detail = await getVideoDetails(best.id.videoId);
-        if (detail) return c.json({ video: formatResult(detail) });
+      for (const q of queries) {
+        const items = await searchYT(q);
+        const best  = pickBest(items);
+        if (best?.id?.videoId) {
+          const detail = await getVideoDetails(best.id.videoId);
+          if (detail) return { video: formatResult(detail) };
+        }
       }
-    }
 
-    // Rule 6: channel search fallback — find artist's Topic channel, then search within it
-    const channelSearchRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?${new URLSearchParams({
-        part: "snippet",
-        q: `${artist} - Topic`,
-        type: "channel",
-        maxResults: "3",
-        key: apiKey,
-      }).toString()}`
-    );
-    if (channelSearchRes.ok) {
-      const channelData = await channelSearchRes.json();
-      const topicChannel = (channelData.items ?? []).find(
-        (ch: any) => ch.snippet?.title?.includes("- Topic")
+      // Rule 6: channel search fallback — find artist's Topic channel, then search within it
+      const channelSearchRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?${new URLSearchParams({
+          part: "snippet",
+          q: `${artist} - Topic`,
+          type: "channel",
+          maxResults: "3",
+          key: apiKey,
+        }).toString()}`
       );
-      if (topicChannel?.id?.channelId) {
-        const channelItems = await searchYT(song, topicChannel.id.channelId);
-        const best = pickBest(channelItems);
-        if (best?.id?.videoId) {
-          const detail = await getVideoDetails(best.id.videoId);
-          if (detail) return c.json({ video: formatResult(detail) });
+      if (channelSearchRes.ok) {
+        const channelData = await channelSearchRes.json();
+        const topicChannel = (channelData.items ?? []).find(
+          (ch: any) => ch.snippet?.title?.includes("- Topic")
+        );
+        if (topicChannel?.id?.channelId) {
+          const channelItems = await searchYT(song, topicChannel.id.channelId);
+          const best = pickBest(channelItems);
+          if (best?.id?.videoId) {
+            const detail = await getVideoDetails(best.id.videoId);
+            if (detail) return { video: formatResult(detail) };
+          }
+        }
+
+        // Last resort: any channel result for the artist, search within it
+        const anyChannel = channelData.items?.[0];
+        if (anyChannel?.id?.channelId) {
+          const channelItems = await searchYT(song, anyChannel.id.channelId);
+          const best = channelItems[0];
+          if (best?.id?.videoId) {
+            const detail = await getVideoDetails(best.id.videoId);
+            if (detail) return { video: formatResult(detail) };
+          }
         }
       }
 
-      // Last resort: any channel result for the artist, search within it
-      const anyChannel = channelData.items?.[0];
-      if (anyChannel?.id?.channelId) {
-        const channelItems = await searchYT(song, anyChannel.id.channelId);
-        const best = channelItems[0];
-        if (best?.id?.videoId) {
-          const detail = await getVideoDetails(best.id.videoId);
-          if (detail) return c.json({ video: formatResult(detail) });
-        }
-      }
-    }
-
-    return c.json({ video: null });
+      return { video: null };
+    });
+    return c.json(result);
   } catch (err) {
     console.log(`Error in find-track: ${err}`);
     return c.json({ error: `Failed to find track: ${err}` }, 500);
