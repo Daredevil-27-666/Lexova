@@ -14,7 +14,8 @@ export function RequireAuth() {
   }
 
   if (!isLoggedIn) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    const dest = localStorage.getItem('lexova_onboarded') ? '/login' : '/onboarding';
+    return <Navigate to={dest} state={{ from: location }} replace />;
   }
 
   return <Outlet />;
