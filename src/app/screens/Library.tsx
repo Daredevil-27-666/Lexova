@@ -30,8 +30,8 @@ const progressPct = (s: number, total: number) =>
 
 function VideoRowSkeleton() {
   return (
-    <div className="flex items-center gap-4 p-3 rounded-xl animate-pulse">
-      <div className="w-36 h-[81px] rounded-lg flex-shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
+    <div className="flex items-center gap-3 sm:gap-4 p-3 rounded-xl animate-pulse">
+      <div className="w-24 h-[54px] sm:w-36 sm:h-[81px] rounded-lg flex-shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
       <div className="flex-1 space-y-2">
         <div className="h-4 rounded w-2/3" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
         <div className="h-3 rounded w-1/3" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} />
@@ -79,17 +79,17 @@ function LikedSongRow({
 
   return (
     <div
-      className="flex items-center gap-4 p-3 rounded-xl group cursor-pointer transition-colors hover:bg-white/5"
+      className="flex items-center gap-3 sm:gap-4 p-3 rounded-xl group cursor-pointer transition-colors hover:bg-white/5"
       onClick={() => navigate(`/watch/${video.videoId}`)}
     >
-      <div className="relative w-36 h-[81px] rounded-lg overflow-hidden flex-shrink-0">
+      <div className="relative w-24 h-[54px] sm:w-36 sm:h-[81px] rounded-lg overflow-hidden flex-shrink-0">
         <ImageWithFallback
           src={thumbnail}
           alt={title}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
         />
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-          <Play className="w-5 h-5 text-white fill-current" />
+          <Play className="w-4 h-4 sm:w-5 sm:h-5 text-white fill-current" />
         </div>
         <span
           className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded font-['DM_Sans'] text-[10px] font-semibold"
@@ -107,13 +107,13 @@ function LikedSongRow({
           </div>
         ) : (
           <>
-            <p className="font-['DM_Sans'] font-semibold mb-1 truncate" style={{ color: 'var(--text-primary)', fontSize: '0.9375rem' }}>
+            <p className="font-['DM_Sans'] font-semibold mb-0.5 truncate text-sm sm:text-[0.9375rem]" style={{ color: 'var(--text-primary)' }}>
               {title}
             </p>
-            <p className="font-['DM_Sans'] text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+            <p className="font-['DM_Sans'] text-xs sm:text-sm mb-0.5" style={{ color: 'var(--text-secondary)' }}>
               {artist}
             </p>
-            <p className="font-['DM_Sans'] text-xs" style={{ color: 'var(--text-secondary)', opacity: 0.6 }}>
+            <p className="font-['DM_Sans'] text-xs hidden sm:block" style={{ color: 'var(--text-secondary)', opacity: 0.6 }}>
               Liked {formatRelativeDate(video.likedAt)}
             </p>
           </>
@@ -122,7 +122,7 @@ function LikedSongRow({
 
       <button
         onClick={(e) => { e.stopPropagation(); onUnlike(); }}
-        className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-white/10 flex-shrink-0"
+        className="p-2 rounded-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:bg-white/10 flex-shrink-0"
         style={{ color: 'var(--gold-accent)' }}
         title="Unlike"
       >
@@ -152,10 +152,10 @@ function HistoryRow({
 
   return (
     <div
-      className="flex items-center gap-4 p-3 rounded-xl group cursor-pointer transition-colors hover:bg-white/5"
+      className="flex items-center gap-3 sm:gap-4 p-3 rounded-xl group cursor-pointer transition-colors hover:bg-white/5"
       onClick={() => navigate(`/watch/${video.videoId}`)}
     >
-      <div className="relative w-36 h-[81px] rounded-lg overflow-hidden flex-shrink-0">
+      <div className="relative w-24 h-[54px] sm:w-36 sm:h-[81px] rounded-lg overflow-hidden flex-shrink-0">
         <ImageWithFallback
           src={thumbnail}
           alt={title}
@@ -163,7 +163,7 @@ function HistoryRow({
           style={{ opacity: finished ? 0.55 : 1 }}
         />
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-          <Play className="w-5 h-5 text-white fill-current" />
+          <Play className="w-4 h-4 sm:w-5 sm:h-5 text-white fill-current" />
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div
@@ -188,15 +188,15 @@ function HistoryRow({
         ) : (
           <>
             <p
-              className="font-['DM_Sans'] font-semibold mb-1 truncate"
-              style={{ color: finished ? 'var(--text-secondary)' : 'var(--text-primary)', fontSize: '0.9375rem' }}
+              className="font-['DM_Sans'] font-semibold mb-0.5 truncate text-sm sm:text-[0.9375rem]"
+              style={{ color: finished ? 'var(--text-secondary)' : 'var(--text-primary)' }}
             >
               {title}
             </p>
-            <p className="font-['DM_Sans'] text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+            <p className="font-['DM_Sans'] text-xs sm:text-sm mb-0.5" style={{ color: 'var(--text-secondary)' }}>
               {artist}
             </p>
-            <p className="font-['DM_Sans'] text-xs" style={{ color: 'var(--text-secondary)', opacity: 0.6 }}>
+            <p className="font-['DM_Sans'] text-xs hidden sm:block" style={{ color: 'var(--text-secondary)', opacity: 0.6 }}>
               {finished ? 'Watched' : `${pct}% watched`} · {formatRelativeDate(video.watchedAt)}
             </p>
           </>
@@ -205,7 +205,7 @@ function HistoryRow({
 
       <button
         onClick={(e) => { e.stopPropagation(); onRemove(); }}
-        className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-white/10 flex-shrink-0"
+        className="p-2 rounded-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:bg-white/10 flex-shrink-0"
         style={{ color: 'var(--text-secondary)' }}
         title="Remove from history"
       >
@@ -235,7 +235,7 @@ function PlaylistsPanel({ navigate }: { navigate: ReturnType<typeof useNavigate>
         </p>
         <button
           onClick={handleNewPlaylist}
-          className="flex items-center gap-2 px-4 py-2 rounded-full font-['DM_Sans'] text-sm font-semibold transition-all hover:scale-105"
+          className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full font-['DM_Sans'] text-sm font-semibold transition-all hover:scale-105"
           style={{ backgroundColor: 'var(--gold-accent)', color: '#0D0D0D' }}
         >
           <Plus className="w-4 h-4" />
@@ -244,13 +244,13 @@ function PlaylistsPanel({ navigate }: { navigate: ReturnType<typeof useNavigate>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
           {Array.from({ length: 6 }).map((_, i) => <PlaylistSkeleton key={i} />)}
         </div>
       ) : playlists.length === 0 ? (
         <EmptyState message="No playlists yet. Create your first one." />
       ) : (
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
           {playlists.map((pl) => (
             <div
               key={pl.id}
@@ -338,7 +338,7 @@ function FollowingPanel({ navigate }: { navigate: ReturnType<typeof useNavigate>
             <div
               key={artist.id}
               onClick={() => navigate(`/artist/${artist.id}`)}
-              className="flex items-center gap-5 p-4 rounded-xl cursor-pointer group transition-colors hover:bg-white/5"
+              className="flex items-center gap-3 sm:gap-5 p-3 sm:p-4 rounded-xl cursor-pointer group transition-colors hover:bg-white/5"
             >
               <div className="relative w-14 h-14 rounded-full overflow-hidden flex-shrink-0">
                 <ImageWithFallback
@@ -383,14 +383,14 @@ function FollowingPanel({ navigate }: { navigate: ReturnType<typeof useNavigate>
 
               <button
                 onClick={(e) => { e.stopPropagation(); unfollow(artist.id); }}
-                className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-white/10 flex-shrink-0"
+                className="p-2 rounded-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:bg-white/10 flex-shrink-0"
                 style={{ color: 'var(--text-secondary)' }}
                 title="Unfollow"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
 
-              <ChevronRight className="w-4 h-4 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-secondary)' }} />
+              <ChevronRight className="w-4 h-4 flex-shrink-0 hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-secondary)' }} />
             </div>
           ))}
         </div>
@@ -495,32 +495,32 @@ export function Library() {
 
   return (
     <div className="pb-16">
-      <div className="px-6 pt-2 pb-8">
+      <div className="px-4 sm:px-6 pt-2 pb-8">
         <h1
-          className="font-['Playfair_Display'] mb-1"
-          style={{ color: 'var(--text-primary)', fontSize: '2.5rem', fontWeight: 600 }}
+          className="font-['Playfair_Display'] mb-1 text-3xl sm:text-[2.5rem]"
+          style={{ color: 'var(--text-primary)', fontWeight: 600 }}
         >
           Your Library
         </h1>
-        <p className="font-['DM_Sans']" style={{ color: 'var(--text-secondary)' }}>
+        <p className="font-['DM_Sans'] text-sm sm:text-base" style={{ color: 'var(--text-secondary)' }}>
           Playlists, artists you follow, saved videos, and watch history.
         </p>
       </div>
 
       <div
-        className="sticky top-0 z-40 border-b px-6"
+        className="sticky top-0 z-40 border-b px-4 sm:px-6"
         style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'rgba(255,255,255,0.08)' }}
       >
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0 overflow-x-auto scrollbar-none">
           {TABS.map(({ id, label, icon: Icon, count }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className="flex items-center gap-2 px-5 py-4 font-['DM_Sans'] text-sm font-medium transition-colors relative"
+              className="flex items-center gap-1.5 px-3 sm:px-5 py-4 font-['DM_Sans'] text-sm font-medium transition-colors relative flex-shrink-0"
               style={{ color: activeTab === id ? 'var(--text-primary)' : 'var(--text-secondary)' }}
             >
-              <Icon className="w-4 h-4" />
-              {label}
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              <span className="hidden sm:inline">{label}</span>
               <span
                 className="px-1.5 py-0.5 rounded-full font-['DM_Sans'] text-[10px] font-semibold"
                 style={{
@@ -541,7 +541,7 @@ export function Library() {
         </div>
       </div>
 
-      <div className="px-6 pt-8">
+      <div className="px-4 sm:px-6 pt-8">
         {activeTab === 'playlists'  && <PlaylistsPanel  navigate={navigate} />}
         {activeTab === 'following'  && <FollowingPanel  navigate={navigate} />}
         {activeTab === 'likedsongs' && <LikedSongsPanel navigate={navigate} />}
