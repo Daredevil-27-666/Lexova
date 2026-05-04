@@ -31,7 +31,7 @@ const progressPct = (s: number, total: number) =>
 function VideoRowSkeleton() {
   return (
     <div className="flex items-center gap-3 sm:gap-4 p-3 rounded-xl animate-pulse">
-      <div className="w-24 h-[54px] sm:w-36 sm:h-[81px] rounded-lg flex-shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
+      <div className="w-32 h-[72px] sm:w-36 sm:h-[81px] rounded-lg flex-shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
       <div className="flex-1 space-y-2">
         <div className="h-4 rounded w-2/3" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
         <div className="h-3 rounded w-1/3" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} />
@@ -82,14 +82,14 @@ function LikedSongRow({
       className="flex items-center gap-3 sm:gap-4 p-3 rounded-xl group cursor-pointer transition-colors hover:bg-white/5"
       onClick={() => navigate(`/watch/${video.videoId}`)}
     >
-      <div className="relative w-24 h-[54px] sm:w-36 sm:h-[81px] rounded-lg overflow-hidden flex-shrink-0">
+      <div className="relative w-32 h-[72px] sm:w-36 sm:h-[81px] rounded-lg overflow-hidden flex-shrink-0">
         <ImageWithFallback
           src={thumbnail}
           alt={title}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
         />
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-          <Play className="w-4 h-4 sm:w-5 sm:h-5 text-white fill-current" />
+          <Play className="w-5 h-5 text-white fill-current" />
         </div>
         <span
           className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded font-['DM_Sans'] text-[10px] font-semibold"
@@ -113,7 +113,7 @@ function LikedSongRow({
             <p className="font-['DM_Sans'] text-xs sm:text-sm mb-0.5" style={{ color: 'var(--text-secondary)' }}>
               {artist}
             </p>
-            <p className="font-['DM_Sans'] text-xs hidden sm:block" style={{ color: 'var(--text-secondary)', opacity: 0.6 }}>
+            <p className="font-['DM_Sans'] text-xs" style={{ color: 'var(--text-secondary)', opacity: 0.6 }}>
               Liked {formatRelativeDate(video.likedAt)}
             </p>
           </>
@@ -155,7 +155,7 @@ function HistoryRow({
       className="flex items-center gap-3 sm:gap-4 p-3 rounded-xl group cursor-pointer transition-colors hover:bg-white/5"
       onClick={() => navigate(`/watch/${video.videoId}`)}
     >
-      <div className="relative w-24 h-[54px] sm:w-36 sm:h-[81px] rounded-lg overflow-hidden flex-shrink-0">
+      <div className="relative w-32 h-[72px] sm:w-36 sm:h-[81px] rounded-lg overflow-hidden flex-shrink-0">
         <ImageWithFallback
           src={thumbnail}
           alt={title}
@@ -163,7 +163,7 @@ function HistoryRow({
           style={{ opacity: finished ? 0.55 : 1 }}
         />
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-          <Play className="w-4 h-4 sm:w-5 sm:h-5 text-white fill-current" />
+          <Play className="w-5 h-5 text-white fill-current" />
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div
@@ -196,7 +196,7 @@ function HistoryRow({
             <p className="font-['DM_Sans'] text-xs sm:text-sm mb-0.5" style={{ color: 'var(--text-secondary)' }}>
               {artist}
             </p>
-            <p className="font-['DM_Sans'] text-xs hidden sm:block" style={{ color: 'var(--text-secondary)', opacity: 0.6 }}>
+            <p className="font-['DM_Sans'] text-xs" style={{ color: 'var(--text-secondary)', opacity: 0.6 }}>
               {finished ? 'Watched' : `${pct}% watched`} · {formatRelativeDate(video.watchedAt)}
             </p>
           </>
@@ -511,16 +511,16 @@ export function Library() {
         className="sticky top-0 z-40 border-b px-4 sm:px-6"
         style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'rgba(255,255,255,0.08)' }}
       >
-        <div className="flex items-center gap-0 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
           {TABS.map(({ id, label, icon: Icon, count }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className="flex items-center gap-1.5 px-3 sm:px-5 py-4 font-['DM_Sans'] text-sm font-medium transition-colors relative flex-shrink-0"
+              className="flex items-center gap-2 px-3 sm:px-5 py-4 font-['DM_Sans'] text-sm font-medium transition-colors relative flex-shrink-0"
               style={{ color: activeTab === id ? 'var(--text-primary)' : 'var(--text-secondary)' }}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
-              <span className="hidden sm:inline">{label}</span>
+              <span>{label}</span>
               <span
                 className="px-1.5 py-0.5 rounded-full font-['DM_Sans'] text-[10px] font-semibold"
                 style={{
