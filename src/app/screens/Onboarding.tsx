@@ -54,7 +54,8 @@ function Dots({ current, total }: { current: number; total: number }) {
 
 // ─── main component ───────────────────────────────────────────────────────────
 export function Onboarding() {
-  const [slide, setSlide] = useState(0);
+  const returning = !!localStorage.getItem('lexova_onboarded');
+  const [slide, setSlide] = useState(returning ? 3 : 0);
   const [authMode, setAuthMode] = useState<AuthMode>('none');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

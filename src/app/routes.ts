@@ -10,12 +10,10 @@ import { Library } from "./screens/Library";
 import { Artists } from "./screens/Artists";
 import { Playlist } from "./screens/Playlist";
 import { Settings } from "./screens/Settings";
-import { Login } from "./screens/Login";
 import { Onboarding } from "./screens/Onboarding";
 import { RequireAuth } from "./components/RequireAuth";
 
 export const router = createBrowserRouter([
-  { path: "login", Component: Login },
   { path: "onboarding", Component: Onboarding },
   {
     path: "/",
