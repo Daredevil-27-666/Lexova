@@ -1,4 +1,4 @@
-import { ChevronRight, ChevronLeft, Play, Clock, Sparkles, TrendingUp, LogIn } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Play, Clock, Sparkles, TrendingUp } from 'lucide-react';
 import { useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
@@ -228,31 +228,6 @@ export function Home() {
         </div>
       )}
 
-      {/* Sign-in prompt when not logged in */}
-      {!isLoggedIn && (
-        <div className="mb-12 mx-6 rounded-xl px-8 py-7 flex items-center justify-between" style={{
-          background: 'linear-gradient(135deg, rgba(201,169,110,0.1) 0%, rgba(201,169,110,0.04) 100%)',
-          border: '1px solid rgba(201, 169, 110, 0.2)'
-        }}>
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Sparkles className="w-4 h-4" style={{ color: 'var(--gold-accent)' }} />
-              <span className="font-['DM_Sans'] font-semibold text-sm" style={{ color: 'var(--gold-accent)' }}>Personalised For You</span>
-            </div>
-            <p className="font-['DM_Sans']" style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-              Sign in to get recommendations based on your taste and followed artists.
-            </p>
-          </div>
-          <button
-            onClick={() => navigate('/login')}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full font-['DM_Sans'] font-semibold text-sm flex-shrink-0 ml-6 transition-all hover:scale-105"
-            style={{ backgroundColor: 'var(--gold-accent)', color: 'var(--bg-primary)' }}
-          >
-            <LogIn className="w-4 h-4" />
-            Sign In
-          </button>
-        </div>
-      )}
 
       {/* Trending Artists This Week */}
       <div className="mb-12 px-6">
@@ -263,11 +238,11 @@ export function Home() {
         }}>
           Trending Artists This Week
         </h2>
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {artistsLoading
             ? Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="animate-pulse">
-                  <div className="w-full aspect-square rounded-lg mb-4" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+                  <div className="w-full aspect-square rounded-lg mb-3" style={{ backgroundColor: 'var(--bg-elevated)' }} />
                   <div className="h-4 rounded w-3/4 mb-2" style={{ backgroundColor: 'var(--bg-elevated)' }} />
                   <div className="h-3 rounded w-1/2" style={{ backgroundColor: 'var(--bg-elevated)' }} />
                 </div>
@@ -278,22 +253,21 @@ export function Home() {
                   onClick={() => navigate(`/search?q=${encodeURIComponent(artist.name)}`)}
                   className="cursor-pointer group"
                 >
-                  <div className="relative mb-4 rounded-lg overflow-hidden">
+                  <div className="relative mb-3 rounded-lg overflow-hidden">
                     <ImageWithFallback
                       src={artist.image}
                       alt={artist.name}
                       className="w-full aspect-square object-cover transition-transform group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                    <div className="absolute bottom-4 left-4 right-4">
-                      <div className="px-2 py-1 rounded-full text-xs font-['DM_Sans'] inline-block mb-2" style={{
+                    <div className="absolute bottom-2 left-2 right-2 md:bottom-4 md:left-4 md:right-4">
+                      <div className="px-1.5 py-0.5 md:px-2 md:py-1 rounded-full text-xs font-['DM_Sans'] inline-block mb-1 md:mb-2 truncate max-w-full" style={{
                         backgroundColor: 'rgba(201, 169, 110, 0.3)',
                         color: 'var(--gold-accent)'
                       }}>
                         {artist.genre}
                       </div>
-                      <h3 className="font-['Playfair_Display'] text-white" style={{
-                        fontSize: '1.25rem',
+                      <h3 className="font-['Playfair_Display'] text-white text-sm md:text-xl truncate" style={{
                         fontWeight: '600',
                         lineHeight: '1.2'
                       }}>
@@ -301,7 +275,7 @@ export function Home() {
                       </h3>
                     </div>
                   </div>
-                  <p className="font-['DM_Sans'] text-sm mb-2" style={{ color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                  <p className="font-['DM_Sans'] text-xs md:text-sm mb-1.5 line-clamp-2" style={{ color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                     {artist.tagline}
                   </p>
                   <div className="font-['DM_Sans'] text-xs" style={{ color: 'var(--gold-accent)' }}>
