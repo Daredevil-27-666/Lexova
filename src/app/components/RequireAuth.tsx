@@ -14,7 +14,7 @@ export function RequireAuth() {
   }
 
   if (!isLoggedIn) {
-    return <Navigate to="/onboarding" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   return <Outlet />;

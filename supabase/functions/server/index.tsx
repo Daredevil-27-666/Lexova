@@ -845,6 +845,39 @@ app.get("/make-server-cc7585ff/gemini/biography", async (c) => {
   }
 });
 
+app.get("/make-server-cc7585ff/gemini/artist-insight", async (c) => {
+  const name = c.req.query("name")?.trim();
+  if (!name) return c.json({ error: "Missing 'name' parameter" }, 400);
+
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) return c.json({ error: "Gemini API key not configured" }, 500);
+
+  try {
+    const data = await withCache(ck("cache:gemini:insight", name), 86400, async () => {
+      const genai = new GoogleGenAI({ apiKey });
+      const response = await genai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: `You are a music encyclopedia. For the artist "${name}", return a JSON object with:
+- "insight": A 2-sentence summary covering their musical style, biggest achievements, and current career status.
+- "news": An array of 3 brief strings, each being a recent notable fact, milestone, or news item about this artist (keep each under 15 words).
+Return ONLY valid JSON, no markdown: {"insight": "...", "news": ["...", "...", "..."]}`,
+      });
+
+      const raw = (response.text ?? "").trim().replace(/^```json?\n?/, "").replace(/\n?```$/, "");
+      try {
+        return JSON.parse(raw) as { insight: string; news: string[] };
+      } catch {
+        return { insight: raw, news: [] };
+      }
+    });
+
+    return c.json(data);
+  } catch (err) {
+    console.log(`Gemini artist-insight error: ${err}`);
+    return c.json({ error: String(err) }, 500);
+  }
+});
+
 // ─── Wikipedia endpoints ──────────────────────────────────────────────────────
 
 // Artist image via MediaWiki prop=images → prop=imageinfo pipeline

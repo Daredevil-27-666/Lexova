@@ -13,6 +13,11 @@ export function useAuthState(): AuthState {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // getSession() awaits Supabase's full initialization, including the OAuth
+    // PKCE code exchange from the URL. It must be the sole place that clears
+    // loading — onAuthStateChange can fire INITIAL_SESSION with a null session
+    // before the exchange finishes, which would incorrectly flip loading=false
+    // and cause RequireAuth to redirect to /onboarding before auth is settled.
     supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user ?? null);
       setLoading(false);
@@ -20,6 +25,7 @@ export function useAuthState(): AuthState {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null);
+      // deliberately NOT calling setLoading(false) here — see note above
     });
 
     return () => subscription.unsubscribe();
