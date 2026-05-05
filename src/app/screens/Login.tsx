@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router';
+import { useState } from 'react';
+import { useLocation } from 'react-router';
 import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
@@ -26,15 +26,8 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/';
-
-  useEffect(() => {
-    if (!localStorage.getItem('lexova_onboarded')) {
-      navigate('/onboarding', { replace: true, state: location.state });
-    }
-  }, []);
 
   const handleGoogleOAuth = async () => {
     setOauthLoading(true);
@@ -65,7 +58,7 @@ export function Login() {
         if (data.session?.access_token) {
           localStorage.setItem('lexova_jwt', data.session.access_token);
         }
-        navigate(from, { replace: true });
+        window.location.replace(from);
       }
     } else {
       const { error } = await supabase.auth.signUp({

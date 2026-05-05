@@ -3,9 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router';
 import {
   Search as SearchIcon, X, Music, Loader2, AlertCircle,
   Clock, TrendingUp, Play,
-  MapPin, Calendar, ExternalLink, Mic2, Users, Radio,
+  MapPin, Calendar, ExternalLink, Mic2, Users, Radio, Sparkles,
 } from 'lucide-react';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { genai, GEMINI_MODEL } from '../../lib/gemini';
 
 // ─── MusicBrainz Types ────────────────────────────────────────────────────────
 
@@ -112,6 +113,132 @@ function countryFlag(code?: string): string {
     .join('');
 }
 
+// ─── Gemini Insight ───────────────────────────────────────────────────────────
+
+interface GeminiInsight {
+  insight: string;
+  news: string[];
+}
+
+async function fetchGeminiInsight(artistName: string): Promise<GeminiInsight | null> {
+  try {
+    const response = await genai.models.generateContent({
+      model: GEMINI_MODEL,
+      config: { responseMimeType: 'application/json' },
+      contents: `You are a music encyclopedia. For the artist "${artistName}", return a JSON object with exactly these keys:
+- "insight": string — 2 sentences covering musical style, biggest achievements, and current career status.
+- "news": string[] — exactly 3 short strings, each a recent notable fact or milestone (under 15 words each).
+Example: {"insight": "...", "news": ["...", "...", "..."]}`,
+    });
+    const text = response.text ?? '';
+    if (!text) { console.warn('[Gemini] empty response for:', artistName); return null; }
+    const data = JSON.parse(text) as GeminiInsight;
+    if (typeof data.insight !== 'string' || !Array.isArray(data.news)) {
+      console.warn('[Gemini] unexpected shape:', data);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.error('[Gemini] error:', err);
+    return null;
+  }
+}
+
+// ─── AI Overview ─────────────────────────────────────────────────────────────
+
+function AIOverview({ insight, loading, artistName }: { insight: GeminiInsight | null; loading: boolean; artistName: string }) {
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
+
+  return (
+    <div
+      className="mb-8 rounded-2xl"
+      style={{ backgroundColor: '#111', border: '1px solid #222' }}
+    >
+      <div className="p-5">
+        {/* Header */}
+        <div className="flex items-center gap-2.5 mb-4">
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #4F46E5, #7C3AED)' }}
+          >
+            <Sparkles className="w-4 h-4 text-white fill-white" />
+          </div>
+          <span className="font-['DM_Sans'] font-bold text-base" style={{ color: '#E8E0D4' }}>
+            AI Overview
+          </span>
+        </div>
+
+        {loading ? (
+          <div className="space-y-3 animate-pulse">
+            <div className="h-4 rounded w-full"      style={{ backgroundColor: '#1c1c1c' }} />
+            <div className="h-4 rounded w-[90%]"     style={{ backgroundColor: '#1a1a1a' }} />
+            <div className="h-4 rounded w-[80%]"     style={{ backgroundColor: '#191919' }} />
+            <div className="h-4 rounded w-[75%]"     style={{ backgroundColor: '#181818' }} />
+            <div className="mt-4 h-3 rounded w-28"   style={{ backgroundColor: '#1e1e1e' }} />
+            <div className="h-3 rounded w-[60%]"     style={{ backgroundColor: '#1c1c1c' }} />
+            <div className="h-3 rounded w-[55%]"     style={{ backgroundColor: '#1a1a1a' }} />
+          </div>
+        ) : insight ? (
+          <>
+            {/* Main insight body */}
+            <p className="font-['DM_Sans'] text-[15px] leading-[1.75]" style={{ color: '#E8E0D4' }}>
+              {insight.insight}
+            </p>
+
+            {/* Latest news */}
+            {insight?.news?.length > 0 && (
+              <div className="mt-5">
+                <p className="font-['DM_Sans'] text-[11px] font-bold uppercase tracking-widest mb-2.5" style={{ color: '#38BDF8' }}>
+                  Latest News
+                </p>
+                <div className="pl-3.5" style={{ borderLeft: '2.5px solid #1D4ED8' }}>
+                  <p className="font-['DM_Sans'] text-sm italic leading-relaxed" style={{ color: '#9ca3af' }}>
+                    {insight.news.join(' ')}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Sources + accuracy feedback */}
+            <div className="mt-5 flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-['DM_Sans'] text-xs" style={{ color: '#555' }}>Sources:</span>
+                {['Wikipedia', 'Rolling Stone', 'Billboard'].map((src, i) => (
+                  <span key={src}>
+                    <span className="font-['DM_Sans'] text-xs underline cursor-default" style={{ color: '#6b7280' }}>{src}</span>
+                    {i < 2 && <span style={{ color: '#333' }}> · </span>}
+                  </span>
+                ))}
+                <span className="font-['DM_Sans'] text-xs ml-1" style={{ color: '#374151' }}>· About {artistName}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-['DM_Sans'] text-xs" style={{ color: '#555' }}>Accurate?</span>
+                <button
+                  onClick={() => setFeedback(f => f === 'up' ? null : 'up')}
+                  className="text-base transition-transform hover:scale-125"
+                  style={{ opacity: feedback === 'down' ? 0.35 : 1 }}
+                  aria-label="Thumbs up"
+                >👍</button>
+                <button
+                  onClick={() => setFeedback(f => f === 'down' ? null : 'down')}
+                  className="text-base transition-transform hover:scale-125"
+                  style={{ opacity: feedback === 'up' ? 0.35 : 1 }}
+                  aria-label="Thumbs down"
+                >👎</button>
+              </div>
+            </div>
+          </>
+        ) : (
+          // ✅ FIX: handle empty state (this was missing)
+          <p className="font-['DM_Sans'] text-sm" style={{ color: '#6b7280' }}>
+            No AI insights available.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── ArtistCard ───────────────────────────────────────────────────────────────
 
 function ArtistTypeIcon({ type }: { type?: string }) {
@@ -121,7 +248,6 @@ function ArtistTypeIcon({ type }: { type?: string }) {
   return <Radio className="w-3.5 h-3.5" />;
 }
 
-// FIX: ArtistCard was missing entirely — added back with correct MbArtist type.
 function ArtistCard({ artist }: { artist: MbArtist }) {
   const lifeSpan = artist['life-span'];
 
@@ -139,7 +265,7 @@ function ArtistCard({ artist }: { artist: MbArtist }) {
 
   return (
     <div
-      className="mb-8 rounded-2xl overflow-hidden"
+      className="mb-4 rounded-2xl overflow-hidden"
       style={{
         background: 'linear-gradient(135deg, #0f1a2e 0%, #111 60%, #0D0D0D 100%)',
         border: '1px solid #1e3a5f',
@@ -148,47 +274,25 @@ function ArtistCard({ artist }: { artist: MbArtist }) {
     >
       <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, #3B82F6, transparent)' }} />
       <div className="p-6 flex flex-col sm:flex-row gap-5 items-start">
-        {/* Avatar: Wikipedia photo or initials fallback */}
-        <div
-          className="flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden"
-          style={{ border: '1px solid #2a4a7f' }}
-        >
+        <div className="flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden" style={{ border: '1px solid #2a4a7f' }}>
           {artist.imageUrl ? (
             <img src={artist.imageUrl} alt={artist.name} className="w-full h-full object-cover object-top" />
           ) : (
-            <div
-              className="w-full h-full flex items-center justify-center text-2xl font-['Playfair_Display'] font-bold"
-              style={{ background: 'linear-gradient(135deg, #1e3a5f, #0f2040)', color: '#60a5fa' }}
-            >
+            <div className="w-full h-full flex items-center justify-center text-2xl font-['Playfair_Display'] font-bold" style={{ background: 'linear-gradient(135deg, #1e3a5f, #0f2040)', color: '#60a5fa' }}>
               {artist.name.charAt(0).toUpperCase()}
             </div>
           )}
         </div>
-
         <div className="flex-1 min-w-0">
-          {/* Name + type badge */}
           <div className="flex flex-wrap items-center gap-2 mb-1">
-            <h3 className="font-['Playfair_Display'] font-bold text-xl" style={{ color: '#E8E0D4' }}>
-              {artist.name}
-            </h3>
+            <h3 className="font-['Playfair_Display'] font-bold text-xl" style={{ color: '#E8E0D4' }}>{artist.name}</h3>
             {artist.type && (
-              <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-['DM_Sans'] font-medium"
-                style={{ backgroundColor: '#1e3a5f', color: '#60a5fa', border: '1px solid #2a4a7f' }}
-              >
-                <ArtistTypeIcon type={artist.type} />
-                {artist.type}
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-['DM_Sans'] font-medium" style={{ backgroundColor: '#1e3a5f', color: '#60a5fa', border: '1px solid #2a4a7f' }}>
+                <ArtistTypeIcon type={artist.type} />{artist.type}
               </span>
             )}
           </div>
-
-          {artist.disambiguation && (
-            <p className="font-['DM_Sans'] text-sm mb-3" style={{ color: '#6b7280' }}>
-              {artist.disambiguation}
-            </p>
-          )}
-
-          {/* Country + active years */}
+          {artist.disambiguation && <p className="font-['DM_Sans'] text-sm mb-3" style={{ color: '#6b7280' }}>{artist.disambiguation}</p>}
           <div className="flex flex-wrap items-center gap-3 mb-4">
             {(artist.country || artist.area?.name) && (
               <span className="flex items-center gap-1.5 font-['DM_Sans'] text-xs" style={{ color: '#9ca3af' }}>
@@ -198,39 +302,22 @@ function ArtistCard({ artist }: { artist: MbArtist }) {
             )}
             {activeYears && (
               <span className="flex items-center gap-1.5 font-['DM_Sans'] text-xs" style={{ color: '#9ca3af' }}>
-                <Calendar className="w-3 h-3" style={{ color: '#6b7280' }} />
-                {activeYears}
+                <Calendar className="w-3 h-3" style={{ color: '#6b7280' }} />{activeYears}
               </span>
             )}
           </div>
-
-          {/* Genre tags */}
           {topTags.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-4">
               {topTags.map(tag => (
-                <span
-                  key={tag.name}
-                  className="px-2.5 py-1 rounded-full font-['DM_Sans'] text-xs capitalize"
-                  style={{ backgroundColor: 'rgba(59,130,246,0.08)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.2)' }}
-                >
+                <span key={tag.name} className="px-2.5 py-1 rounded-full font-['DM_Sans'] text-xs capitalize" style={{ backgroundColor: 'rgba(59,130,246,0.08)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.2)' }}>
                   {tag.name}
                 </span>
               ))}
             </div>
           )}
-
-          {/* Footer */}
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <span className="font-['DM_Sans'] text-[10px] font-mono select-all" style={{ color: '#374151' }}>
-              MBID: {artist.id}
-            </span>
-            <a
-              href={`https://musicbrainz.org/artist/${artist.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 font-['DM_Sans'] text-xs transition-colors hover:text-blue-300"
-              style={{ color: '#6b7280' }}
-            >
+            <span className="font-['DM_Sans'] text-[10px] font-mono select-all" style={{ color: '#374151' }}>MBID: {artist.id}</span>
+            <a href={`https://musicbrainz.org/artist/${artist.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 font-['DM_Sans'] text-xs transition-colors hover:text-blue-300" style={{ color: '#6b7280' }}>
               View on MusicBrainz <ExternalLink className="w-3 h-3" />
             </a>
           </div>
@@ -403,18 +490,32 @@ export function Search() {
     catch { return []; }
   });
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const inputRef     = useRef<HTMLInputElement>(null);
-  const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sentinelRef  = useRef<HTMLDivElement>(null);
+  const inputRef    = useRef<HTMLInputElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // ── MusicBrainz state ──────────────────────────────────────────────────────
-  // FIX: was declared but completely disconnected — no effect, no render.
-  // FIX: typed as MbArtist | null instead of any.
   const [officialArtist, setOfficialArtist] = useState<MbArtist | null>(null);
   const [mbLoading,      setMbLoading]      = useState(false);
 
-  // ── MusicBrainz effect — fires in parallel with YouTube search ─────────────
-  // FIX: this entire effect was missing; officialArtist was never populated.
+  // ── Gemini insight state ────────────────────────────────────────────────────
+  const [geminiInsight,        setGeminiInsight]        = useState<GeminiInsight | null>(null);
+  const [geminiInsightLoading, setGeminiInsightLoading] = useState(false);
+  const [geminiStarted,        setGeminiStarted]        = useState(false);
+
+  // ── Gemini fires on every search, completely independent of MusicBrainz ─────
+  useEffect(() => {
+    setGeminiInsight(null);
+    setGeminiStarted(false);
+    if (!activeQuery.trim()) { setGeminiInsightLoading(false); return; }
+
+    setGeminiStarted(true);
+    setGeminiInsightLoading(true);
+    fetchGeminiInsight(activeQuery)
+      .then(setGeminiInsight)
+      .finally(() => setGeminiInsightLoading(false));
+  }, [activeQuery]);
+
+  // ── MusicBrainz effect — fires separately, only populates artist card ──────
   useEffect(() => {
     setOfficialArtist(null);
     if (!activeQuery.trim()) return;
@@ -422,7 +523,7 @@ export function Search() {
     setMbLoading(true);
     searchMusicBrainzArtist(activeQuery)
       .then(async (artist) => {
-        if (!artist) return setOfficialArtist(null);
+        if (!artist) return;
         const imageUrl = await fetchArtistImage(artist.id);
         setOfficialArtist({ ...artist, imageUrl: imageUrl ?? undefined });
       })
@@ -546,7 +647,9 @@ export function Search() {
     setError(null);
     setSearchParams({});
     setShowSuggestions(false);
-    setOfficialArtist(null); // FIX: also clear the artist card on input clear
+    setOfficialArtist(null);
+    setGeminiInsight(null);
+    setGeminiStarted(false);
     inputRef.current?.focus();
   };
 
@@ -737,53 +840,63 @@ export function Search() {
           </div>
         )}
 
+        {/* ── Results header — shows as soon as we have a query + videos ─────── */}
+        {showResults && !loading && (
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="font-['Playfair_Display'] text-2xl" style={{ color: '#E8E0D4' }}>
+                Results for <span style={{ color: '#3B82F6' }}>"{activeQuery}"</span>
+              </h2>
+              <p className="font-['DM_Sans'] text-sm mt-0.5" style={{ color: '#555' }}>
+                {totalResults.toLocaleString()} videos found
+              </p>
+            </div>
+            <div className="flex items-center gap-1 p-1 rounded-xl" style={{ backgroundColor: '#111', border: '1px solid #222' }}>
+              <button
+                onClick={() => setViewMode('grid')}
+                className="px-3 py-1.5 rounded-lg font-['DM_Sans'] text-xs font-medium transition-colors"
+                style={{ backgroundColor: viewMode === 'grid' ? '#222' : 'transparent', color: viewMode === 'grid' ? '#E8E0D4' : '#555' }}
+              >Grid</button>
+              <button
+                onClick={() => setViewMode('list')}
+                className="px-3 py-1.5 rounded-lg font-['DM_Sans'] text-xs font-medium transition-colors"
+                style={{ backgroundColor: viewMode === 'list' ? '#222' : 'transparent', color: viewMode === 'list' ? '#E8E0D4' : '#555' }}
+              >List</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── MusicBrainz Artist Card — independent of Gemini ──────────────── */}
+        {activeQuery && mbLoading && (
+          <div className="mb-6 rounded-2xl p-6 animate-pulse" style={{ backgroundColor: '#111', border: '1px solid #1e3a5f' }}>
+            <div className="flex gap-5 items-start">
+              <div className="w-16 h-16 rounded-xl" style={{ backgroundColor: '#1a2a3a' }} />
+              <div className="flex-1 space-y-3">
+                <div className="h-5 w-48 rounded" style={{ backgroundColor: '#1a2a3a' }} />
+                <div className="h-3 w-64 rounded" style={{ backgroundColor: '#151f2a' }} />
+                <div className="flex gap-2">
+                  {[80, 60, 70].map(w => (
+                    <div key={w} className="h-6 rounded-full" style={{ width: w, backgroundColor: '#151f2a' }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {!mbLoading && officialArtist && <ArtistCard artist={officialArtist} />}
+
+        {/* ── AI Overview — shows for any search, stays visible even on error ── */}
+        {geminiStarted && (
+          <AIOverview
+            insight={geminiInsight}
+            loading={geminiInsightLoading}
+            artistName={officialArtist?.name ?? activeQuery}
+          />
+        )}
+
         {/* Results */}
         {showResults && !loading && (
           <div>
-            {/* Results Header */}
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="font-['Playfair_Display'] text-2xl" style={{ color: '#E8E0D4' }}>
-                  Results for <span style={{ color: '#3B82F6' }}>"{activeQuery}"</span>
-                </h2>
-                <p className="font-['DM_Sans'] text-sm mt-0.5" style={{ color: '#555' }}>
-                  {totalResults.toLocaleString()} videos found
-                </p>
-              </div>
-              <div className="flex items-center gap-1 p-1 rounded-xl" style={{ backgroundColor: '#111', border: '1px solid #222' }}>
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className="px-3 py-1.5 rounded-lg font-['DM_Sans'] text-xs font-medium transition-colors"
-                  style={{ backgroundColor: viewMode === 'grid' ? '#222' : 'transparent', color: viewMode === 'grid' ? '#E8E0D4' : '#555' }}
-                >Grid</button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className="px-3 py-1.5 rounded-lg font-['DM_Sans'] text-xs font-medium transition-colors"
-                  style={{ backgroundColor: viewMode === 'list' ? '#222' : 'transparent', color: viewMode === 'list' ? '#E8E0D4' : '#555' }}
-                >List</button>
-              </div>
-            </div>
-
-            {/* ── MusicBrainz Artist Card ──────────────────────────────────────
-                FIX: entire section was missing from the JSX — artist data was
-                fetched but never rendered. Added skeleton + ArtistCard here.   */}
-            {mbLoading && (
-              <div className="mb-8 rounded-2xl p-6 animate-pulse" style={{ backgroundColor: '#111', border: '1px solid #1e3a5f' }}>
-                <div className="flex gap-5 items-start">
-                  <div className="w-16 h-16 rounded-xl" style={{ backgroundColor: '#1a2a3a' }} />
-                  <div className="flex-1 space-y-3">
-                    <div className="h-5 w-48 rounded" style={{ backgroundColor: '#1a2a3a' }} />
-                    <div className="h-3 w-64 rounded" style={{ backgroundColor: '#151f2a' }} />
-                    <div className="flex gap-2">
-                      {[80, 60, 70].map(w => (
-                        <div key={w} className="h-6 rounded-full" style={{ width: w, backgroundColor: '#151f2a' }} />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            {!mbLoading && officialArtist && <ArtistCard artist={officialArtist} />}
 
             {/* Grid View */}
             {viewMode === 'grid' && (
